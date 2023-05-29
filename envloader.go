@@ -2,6 +2,7 @@ package envloader
 
 import (
 	"bufio"
+	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -14,6 +15,18 @@ const (
 )
 
 var rxConfig = regexp.MustCompile(configRegex)
+var logOnFileCloseError = false
+
+// LogFileClosingError enables logging of errors when closing the file.
+func LogFileClosingError() {
+	logOnFileCloseError = true
+}
+
+func fileClose(f *os.File) {
+	if err := f.Close(); err != nil && logOnFileCloseError {
+		log.Printf("error closing file %v", err)
+	}
+}
 
 func readLine(line string) (key, value string, valid bool) {
 	if line == "" || strings.HasPrefix(line, "#") { // line is commented or empty
@@ -58,8 +71,7 @@ func LoadFromFile(configFile string, errorIfFileDoesntExist bool) error {
 		return err
 	}
 
-	// Here we're ignoring the error returned by Close() because logging details about the file could represent a security flaw.
-	defer f.Close()
+	defer fileClose(f)
 
 	scanner := bufio.NewScanner(f)
 	scanner.Split(bufio.ScanLines)
