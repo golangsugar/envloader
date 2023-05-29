@@ -15,52 +15,25 @@ const (
 
 var rxConfig = regexp.MustCompile(configRegex)
 
-func envMap(configFile string, errorIfFileDoesntExist bool) (map[string]string, error) {
-	f, err := os.Open(configFile)
-	if err != nil {
-		if err == os.ErrNotExist && !errorIfFileDoesntExist {
-			return nil, nil
-		}
-
-		return nil, err
+func readLine(line string) (key, value string, valid bool) {
+	if line == "" || strings.HasPrefix(line, "#") { // line is commented or empty
+		return
 	}
 
-	defer func() {
-		_ = f.Close()
-	}()
+	if matches := rxConfig.FindStringSubmatch(line); len(matches) > 0 {
+		valid = true
+		key = matches[rxGroupKey]
 
-	scanner := bufio.NewScanner(f)
-
-	scanner.Split(bufio.ScanLines)
-
-	m := make(map[string]string)
-
-	for scanner.Scan() {
-		s := strings.TrimSpace(scanner.Text())
-
-		if s == "" || strings.HasPrefix(s, "#") { // line is commented or empty
-			continue
-		}
-
-		if matches := rxConfig.FindStringSubmatch(s); len(matches) > 0 {
-			k := matches[rxGroupKey]
-			v := ""
-
-			if len(matches) > 2 {
-				v = matches[rxGroupValue]
-			}
-
-			m[k] = v
+		if len(matches) > 2 {
+			value = matches[rxGroupValue]
 		}
 	}
 
-	return m, nil
+	return
 }
 
 // LoadFromFile loads environment variables values from a given text file in to a map[string]string.
 // configFile is the file name, with the complete path if necessary.
-// if updateEnvironment is true, all valid variable values found will be set on environment as well.
-// if skipIfAlreadyDefined is true, the found variable will be added to the map anyway, but only updated in environment if not defined.
 // if errorIfFileDoesntExist, the function returns with an error in case of the given file doesn't exist.
 // valid lines must comply with regex ^([A-Z][A-Z0-9_]+)([=]{1})([[\S ]*]?)$.
 // Examples of valid lines:
@@ -75,29 +48,29 @@ func envMap(configFile string, errorIfFileDoesntExist bool) (map[string]string, 
 // Invalid/Ignored: _LETTERS=4334343434 ( has to start with a letter ).
 // Invalid/Ignored: X=4334343434 ( should contain 2 or more chars ).
 // Environment variables reference for curious: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html.
-func LoadFromFile(configFile string, updateEnvironment, skipIfAlreadyDefined, errorIfFileDoesntExist bool) (map[string]string, error) {
-	m, err := envMap(configFile, errorIfFileDoesntExist)
+func LoadFromFile(configFile string, errorIfFileDoesntExist bool) error {
+	f, err := os.Open(configFile)
 	if err != nil {
-		return nil, err
-	}
-
-	if m == nil {
-		return nil, nil
-	}
-
-	if !updateEnvironment {
-		return m, nil
-	}
-
-	for k, v := range m {
-		if _, ok := os.LookupEnv(k); ok && skipIfAlreadyDefined {
-			continue
+		if err == os.ErrNotExist && !errorIfFileDoesntExist {
+			return nil
 		}
 
-		if serr := os.Setenv(k, v); serr != nil {
-			return nil, serr
+		return err
+	}
+
+	// Here we're ignoring the error returned by Close() because logging details about the file could represent a security flaw.
+	defer f.Close()
+
+	scanner := bufio.NewScanner(f)
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if key, value, valid := readLine(line); valid {
+			if err = os.Setenv(key, value); err != nil {
+				return err
+			}
 		}
 	}
 
-	return m, nil
+	return nil
 }
