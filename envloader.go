@@ -48,7 +48,7 @@ func readLine(line string) (key, value string, valid bool) {
 // LoadFromFile loads environment variables values from a given text file in to a map[string]string.
 // configFile is the file name, with the complete path if necessary.
 // if errorIfFileDoesntExist, the function returns with an error in case of the given file doesn't exist.
-// valid lines must comply with regex ^([A-Z][A-Z0-9_]+)([=]{1})([[\S ]*]?)$.
+// valid lines must comply with regex ^([a-zA-Z][a-zA-Z0-9_]+)=([[\S ]*]?)$.
 // Examples of valid lines:
 // ABC=prd
 // XYZ=
@@ -57,7 +57,6 @@ func readLine(line string) (key, value string, valid bool) {
 //
 // Examples of *invalid* lines:
 // Commented/ignored: #XYZ=4334343434 ( starts with # ).
-// invalid/ignored: opt=ler0ler0 ( has to be all caps/uppercase ).
 // Invalid/Ignored: _LETTERS=4334343434 ( has to start with a letter ).
 // Invalid/Ignored: X=4334343434 ( should contain 2 or more chars ).
 // Environment variables reference for curious: https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html.
