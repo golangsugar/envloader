@@ -63,7 +63,7 @@ func readLine(line string) (key, value string, valid bool) {
 func LoadFromFile(configFile string, errorIfFileDoesntExist bool) error {
 	f, err := os.Open(configFile)
 	if err != nil {
-		if err == os.ErrNotExist && !errorIfFileDoesntExist {
+		if !errorIfFileDoesntExist {
 			return nil
 		}
 
